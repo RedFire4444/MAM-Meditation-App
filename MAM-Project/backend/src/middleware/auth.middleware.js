@@ -1,24 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 // Create Supabase client for token verification
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Extend Express Request to include user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email?: string;
-        [key: string]: any;
-      };
-    }
-  }
-}
 
 /**
  * Supabase Authentication Middleware
@@ -26,20 +12,15 @@ declare global {
  * Verifies Supabase-issued JWT tokens (NOT custom JWT)
  * Token comes from frontend after Supabase authentication
  */
-export const authenticateToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         error: 'Access token required'
       });
-      return;
     }
 
     const token = authHeader.substring(7);
@@ -48,11 +29,10 @@ export const authenticateToken = async (
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         error: 'Invalid or expired token'
       });
-      return;
     }
 
     // Attach user to request
@@ -71,3 +51,5 @@ export const authenticateToken = async (
     });
   }
 };
+
+module.exports = { authenticateToken };
